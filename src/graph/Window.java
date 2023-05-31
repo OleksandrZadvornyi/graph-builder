@@ -26,6 +26,7 @@ import javax.swing.JPanel;
 import graph.expression.Function;
 import graph.parser.ExpressionParser;
 import java.awt.event.MouseListener;
+import java.awt.geom.Ellipse2D;
 
 public class Window extends JPanel implements MouseWheelListener, KeyListener, Runnable {
 
@@ -47,6 +48,21 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
 
     private boolean textBoxActive = true;
     private boolean textBox1Active = false;
+
+    private List<Double> bxs;
+    private List<Double> bys;
+    private List<Double> rxs;
+    private List<Double> rys;
+
+    private int[] bxa;
+    private int[] bya;
+    private int[] rxa;
+    private int[] rya;
+    
+    private boolean isHover = false;
+    
+    private double movedX;
+    private double movedY;
 
     public Window() {
         addMouseWheelListener(this);
@@ -76,6 +92,26 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
                 windowY += dy / (double) HEIGHT * windowHeight;
                 mousePt = e.getPoint();
 
+                repaint();
+            }
+
+            @Override
+            public void mouseMoved(MouseEvent event) {
+                System.out.println("Mouse movement detected! Actual mouse position is: " + event.getX() + "," + event.getY() + ".");
+                isHover = false;
+                g2d.setColor(Color.BLACK);
+                g2d.setFont(new Font("courier new", Font.ITALIC, 25));
+                if (!textBox.equals(textBox1)) {
+                    for (int i = 0; i < rxa.length; i++) {
+                        if (rxa[i] == bxa[i] && rya[i] == bya[i]
+                                && event.getX() >= rxa[i] - 5 && event.getX() <= rxa[i] + 5
+                                && event.getY() >= rya[i] - 5 && event.getY() <= rya[i] + 5) {
+                            movedX = (double)event.getX();
+                            movedY = (double)event.getY();
+                            isHover = true;
+                        }
+                    }
+                }
                 repaint();
             }
         });
@@ -120,8 +156,8 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
 
         synchronized (this) {
             ////////////////////////////////////////
-            List<Double> bxs = new ArrayList<>();
-            List<Double> bys = new ArrayList<>();
+            bxs = new ArrayList<>();
+            bys = new ArrayList<>();
 
             for (int x = 0; x < WIDTH; x++) {
                 double xx = toRealX(x);
@@ -139,8 +175,8 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
                 bys.add(scaledY);
             }
 
-            int[] bxa = new int[bxs.size()];
-            int[] bya = new int[bys.size()];
+            bxa = new int[bxs.size()];
+            bya = new int[bys.size()];
 
             for (int i = 0; i < bxa.length; i++) {
                 bxa[i] = bxs.get(i).intValue();
@@ -150,8 +186,8 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
             }
 
             ////////////////////////////////////////
-            List<Double> rxs = new ArrayList<>();
-            List<Double> rys = new ArrayList<>();
+            rxs = new ArrayList<>();
+            rys = new ArrayList<>();
 
             for (int x = 0; x < WIDTH; x++) {
                 double xx = toRealX(x);
@@ -169,8 +205,8 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
                 rys.add(scaledY);
             }
 
-            int[] rxa = new int[rxs.size()];
-            int[] rya = new int[rys.size()];
+            rxa = new int[rxs.size()];
+            rya = new int[rys.size()];
 
             for (int i = 0; i < rxa.length; i++) {
                 rxa[i] = rxs.get(i).intValue();
@@ -214,17 +250,25 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
             g2d.drawString("y", yAxisX + 10, g2d.getFontMetrics().getHeight() - 20);
 
             if (textBoxActive) {
-                g2d.setColor(Color.blue);
+                g2d.setColor(Color.BLUE);
                 g2d.drawRect(0, HEIGHT - g2d.getFontMetrics().getHeight(), WIDTH - 2, 45);
             } else if (textBox1Active) {
-                g2d.setColor(Color.red);
+                g2d.setColor(Color.RED);
                 g2d.drawRect(0, HEIGHT - g2d.getFontMetrics().getHeight() - 50, WIDTH - 2, 45);
             }
 
             ////////////////////////////////////////
-            for (int i = 0; i < rxa.length; i++) {
-                if (rxa[i] == bxa[i] && rya[i] == bya[i]) {
-                    g2d.drawString(rxa[i] + "," + rya[i], 50, 50);
+            g2d.setColor(Color.BLACK);
+            g2d.setFont(new Font("courier new", Font.ITALIC, 25));
+            if (!textBox.equals(textBox1)) {
+                for (int i = 0; i < rxa.length; i++) {
+                    if (rxa[i] == bxa[i] && rya[i] == bya[i]) {
+                        Ellipse2D.Double circle = new Ellipse2D.Double(rxa[i] - 5, rya[i] - 5, 10, 10);
+                        g2d.fill(circle);
+                        if (isHover) {
+                            g2d.drawString(String.format("%.2f", toRealX(rxa[i])) + ";" + String.format("%.2f", toRealY(rya[i])), (int)movedX - 100, (int)movedY + 35);
+                        }
+                    }
                 }
             }
         }
