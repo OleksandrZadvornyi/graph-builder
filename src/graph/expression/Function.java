@@ -10,7 +10,7 @@ public class Function {
         this.expr = expr;
     }
 
-    public double evaluateAt(double x) {
+    public double evaluateAt(double x) throws Exception {
         ExpressionParser parser = new ExpressionParser();
         return parser.parse(expr.replaceAll("x", String.valueOf(x)));
     }

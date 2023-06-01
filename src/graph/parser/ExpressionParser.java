@@ -63,12 +63,18 @@ public class ExpressionParser {
             new Keyword("log10", LOG10),
             new Keyword("log1p", LOG1P),
             new Keyword("sqrt", SQRT),
-            new Keyword("abs", ABS),
-        };
+            new Keyword("abs", ABS),};
     }
 
     public double parse(String expr) throws Exception {
-        exprStr = expr;
+        if (expr.equals("")) {
+            return 0.0;
+        }
+        if (expr.charAt(0) == '-') {
+            exprStr = expr.replaceFirst("-", "(0-1)*");
+        } else {
+            exprStr = expr;
+        }
         this.expr = exprStr.toCharArray();
 
         return evaluate();

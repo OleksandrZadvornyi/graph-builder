@@ -24,6 +24,8 @@ import javax.swing.JPanel;
 
 import graph.expression.Function;
 import graph.parser.ExpressionParser;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Window extends JPanel implements MouseWheelListener, KeyListener, Runnable {
 
@@ -58,7 +60,6 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
 
     // Чи наведено курсором на точку перетину графіків
     private boolean isHover = false;
-    private boolean enterKeyPressed = false;
 
     // Координати курсора
     private double movedX;
@@ -104,8 +105,8 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
                 if (!textBox.equals(textBox1)) {
                     for (int i = 0; i < rxa.length; i++) {
                         if (rxa[i] == bxa[i] && rya[i] == bya[i]
-                                && event.getX() >= rxa[i] - 5 && event.getX() <= rxa[i] + 5
-                                && event.getY() >= rya[i] - 5 && event.getY() <= rya[i] + 5) {
+                                && (event.getX() >= rxa[i] - 3 && event.getX() <= rxa[i] + 3)
+                                && (event.getY() >= rya[i] - 3 && event.getY() <= rya[i] + 3)) {
                             movedX = (double) event.getX();
                             movedY = (double) event.getY();
                             isHover = true;
@@ -135,7 +136,7 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
         windowWidth = windowHeight * WIDTH / HEIGHT;
     }
 
-    private void calculateFirstGraphCoordinates() {
+    private void calculateFirstGraphCoordinates() throws Exception {
         bxs = new ArrayList<>();
         bys = new ArrayList<>();
 
@@ -166,7 +167,7 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
         }
     }
 
-    private void calculateSecondGraphCoordinates() {
+    private void calculateSecondGraphCoordinates() throws Exception {
         rxs = new ArrayList<>();
         rys = new ArrayList<>();
 
@@ -205,21 +206,16 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
         g2d.fillRect(0, 0, WIDTH, HEIGHT);
 
         synchronized (this) {
-            calculateFirstGraphCoordinates();
-            calculateSecondGraphCoordinates();
-
-            // Намалювати вісь X
-            g2d.setColor(Color.BLACK);
-            int xAxisY = toScreenY(0.0);
-            g2d.drawLine(0, xAxisY, WIDTH, xAxisY);
-
-            // Намалювати вісь Y
-            g2d.setColor(Color.BLACK);
-            int yAxisX = toScreenX(0.0);
-            g2d.drawLine(yAxisX, 0, yAxisX, HEIGHT);
-
-            // Намалювати поділки
-            drawDivisions();
+            try {
+                calculateFirstGraphCoordinates();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+            try {
+                calculateSecondGraphCoordinates();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
 
             // Намалювати графіки
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -232,6 +228,20 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
                 g2d.setColor(Color.RED);
                 g2d.drawPolyline(rxa, rya, rxa.length);
             }
+
+            g2d.setStroke(new BasicStroke(4.0f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_ROUND));
+            // Намалювати вісь X
+            g2d.setColor(Color.BLACK);
+            int xAxisY = toScreenY(0.0);
+            g2d.drawLine(0, xAxisY, WIDTH, xAxisY);
+
+            // Намалювати вісь Y
+            g2d.setColor(Color.BLACK);
+            int yAxisX = toScreenX(0.0);
+            g2d.drawLine(yAxisX, 0, yAxisX, HEIGHT);
+
+            // Намалювати поділки
+            drawDivisions();
 
             // Намалювати текстові поля для вводу функцій
             g2d.setFont(new Font("courier new", Font.ITALIC, 40));
@@ -257,7 +267,8 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
 
             // Відображення значення точки перетину двох графіків 
             // при наведенні курсору миші на область пертину
-            if (enterKeyPressed && !textBox.equals("") && !textBox1.equals("")) {
+            boolean isDrawed = false;
+            if (!textBox.equals("") && !textBox1.equals("")) {
                 g2d.setColor(Color.BLACK);
                 g2d.setFont(new Font("courier new", Font.ITALIC, 25));
                 if (!textBox.equals(textBox1)) {
@@ -265,8 +276,12 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
                         if (rxa[i] == bxa[i] && rya[i] == bya[i]) {
                             Ellipse2D.Double circle = new Ellipse2D.Double(rxa[i] - 5, rya[i] - 5, 10, 10);
                             g2d.fill(circle);
+
                             if (isHover) {
-                                g2d.drawString(String.format("%.2f", toRealX(rxa[i])) + ";" + String.format("%.2f", toRealY(rya[i])), (int) movedX - 100, (int) movedY + 35);
+                                if (movedX >= rxa[i] - 5 && movedX <= rxa[i] + 5
+                                        && movedY >= rya[i] - 5 && movedY <= rya[i] + 5) {
+                                    g2d.drawString(String.format("%.2f", toRealX(rxa[i])) + ";" + String.format("%.2f", toRealY(rya[i])), rxa[i] - 100, (int) rya[i] + 35);
+                                }
                             }
                         }
                     }
@@ -359,8 +374,6 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
         if (e.getKeyCode() == KeyEvent.VK_ENTER) {
             function = new Function(textBox);
             function1 = new Function(textBox1);
-
-            enterKeyPressed = true;
         }
     }
 
