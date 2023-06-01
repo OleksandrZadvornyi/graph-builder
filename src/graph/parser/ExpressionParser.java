@@ -59,7 +59,7 @@ public class ExpressionParser {
             new Keyword("acos", ACOS),
             new Keyword("atan", ATAN),
             new Keyword("acot", ACOT),
-            new Keyword("exp", EXP),
+            new Keyword("e", EXP),
             new Keyword("log10", LOG10),
             new Keyword("log1p", LOG1P),
             new Keyword("sqrt", SQRT),
@@ -67,7 +67,7 @@ public class ExpressionParser {
         };
     }
 
-    public double parse(String expr) {
+    public double parse(String expr) throws Exception {
         exprStr = expr;
         this.expr = exprStr.toCharArray();
 
@@ -81,7 +81,7 @@ public class ExpressionParser {
      *
      * @return - результат обчислення
      */
-    private double evaluate() {
+    private double evaluate() throws Exception {
         double result;
 
         getToken();
@@ -101,7 +101,7 @@ public class ExpressionParser {
      *
      * @return - результат операції віднімання/додавання
      */
-    private double evalExp1() {
+    private double evalExp1() throws Exception {
         char op;
         double result;
         double partialResult;
@@ -129,7 +129,7 @@ public class ExpressionParser {
      *
      * @return - результат операції множення/ділення
      */
-    private double evalExp2() {
+    private double evalExp2() throws Exception {
         char op;
         double result;
         double partialResult;
@@ -168,7 +168,7 @@ public class ExpressionParser {
      *
      * @return - результат операції піднесення до степеня
      */
-    private double evalExp3() {
+    private double evalExp3() throws Exception {
         double result;
         double partialResult;
         double ex;
@@ -197,7 +197,7 @@ public class ExpressionParser {
      *
      * @return - результат операції унарного плюса/мінуса
      */
-    private double evalExp4() {
+    private double evalExp4() throws Exception {
         double result;
         String op;
 
@@ -223,7 +223,7 @@ public class ExpressionParser {
      *
      * @return - результат обчислення виразу у дужках
      */
-    private double evalExp5() {
+    private double evalExp5() throws Exception {
         double result;
 
         if (token.equals("(")) {
@@ -264,7 +264,7 @@ public class ExpressionParser {
                 case EXP ->
                     Math.exp(evalExp1());
                 default ->
-                    0;
+                    throw new Exception();
             };
             if (!token.equals(")")) {
                 //handleErr(UNBALPARENS);

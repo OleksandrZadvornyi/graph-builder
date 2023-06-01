@@ -16,6 +16,7 @@ import java.awt.event.MouseMotionAdapter;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.awt.image.BufferedImage;
+import java.awt.geom.Ellipse2D;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,17 +24,16 @@ import javax.swing.JPanel;
 
 import graph.expression.Function;
 import graph.parser.ExpressionParser;
-import java.awt.geom.Ellipse2D;
 
 public class Window extends JPanel implements MouseWheelListener, KeyListener, Runnable {
 
     public static final int WIDTH = 1024;
     public static final int HEIGHT = 768;
 
-    private BufferedImage buff;
+    private final BufferedImage buff;
     private Graphics2D g2d;
 
-    private ExpressionParser parser;
+    private final ExpressionParser parser;
     private Function function;
     private Function function1;
 
@@ -58,6 +58,7 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
 
     // Чи наведено курсором на точку перетину графіків
     private boolean isHover = false;
+    private boolean enterKeyPressed = false;
 
     // Координати курсора
     private double movedX;
@@ -207,13 +208,13 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
             calculateFirstGraphCoordinates();
             calculateSecondGraphCoordinates();
 
-            g2d.setColor(Color.BLACK);
-
             // Намалювати вісь X
+            g2d.setColor(Color.BLACK);
             int xAxisY = toScreenY(0.0);
             g2d.drawLine(0, xAxisY, WIDTH, xAxisY);
 
             // Намалювати вісь Y
+            g2d.setColor(Color.BLACK);
             int yAxisX = toScreenX(0.0);
             g2d.drawLine(yAxisX, 0, yAxisX, HEIGHT);
 
@@ -231,7 +232,7 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
                 g2d.setColor(Color.RED);
                 g2d.drawPolyline(rxa, rya, rxa.length);
             }
-            
+
             // Намалювати текстові поля для вводу функцій
             g2d.setFont(new Font("courier new", Font.ITALIC, 40));
             g2d.setColor(Color.LIGHT_GRAY);
@@ -256,15 +257,17 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
 
             // Відображення значення точки перетину двох графіків 
             // при наведенні курсору миші на область пертину
-            g2d.setColor(Color.BLACK);
-            g2d.setFont(new Font("courier new", Font.ITALIC, 25));
-            if (!textBox.equals(textBox1)) {
-                for (int i = 0; i < rxa.length; i++) {
-                    if (rxa[i] == bxa[i] && rya[i] == bya[i]) {
-                        Ellipse2D.Double circle = new Ellipse2D.Double(rxa[i] - 5, rya[i] - 5, 10, 10);
-                        g2d.fill(circle);
-                        if (isHover) {
-                            g2d.drawString(String.format("%.2f", toRealX(rxa[i])) + ";" + String.format("%.2f", toRealY(rya[i])), (int) movedX - 100, (int) movedY + 35);
+            if (enterKeyPressed && !textBox.equals("") && !textBox1.equals("")) {
+                g2d.setColor(Color.BLACK);
+                g2d.setFont(new Font("courier new", Font.ITALIC, 25));
+                if (!textBox.equals(textBox1)) {
+                    for (int i = 0; i < rxa.length; i++) {
+                        if (rxa[i] == bxa[i] && rya[i] == bya[i]) {
+                            Ellipse2D.Double circle = new Ellipse2D.Double(rxa[i] - 5, rya[i] - 5, 10, 10);
+                            g2d.fill(circle);
+                            if (isHover) {
+                                g2d.drawString(String.format("%.2f", toRealX(rxa[i])) + ";" + String.format("%.2f", toRealY(rya[i])), (int) movedX - 100, (int) movedY + 35);
+                            }
                         }
                     }
                 }
@@ -356,6 +359,8 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
         if (e.getKeyCode() == KeyEvent.VK_ENTER) {
             function = new Function(textBox);
             function1 = new Function(textBox1);
+
+            enterKeyPressed = true;
         }
     }
 

@@ -1,7 +1,6 @@
 package graphbuilder;
 
 import javax.swing.JFrame;
-
 import graph.Window;
 
 public class Main {
