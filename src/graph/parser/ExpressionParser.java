@@ -1,376 +1,410 @@
 package graph.parser;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import graph.expression.*;
-
 public class ExpressionParser {
 
-    private Error error;
-    private Variable x;
-    private Variable y;
-    private Variable z;
+    private char[] expr;    // масив з виразом
+    private int exprIdx;    // поточний індекс в виразі
+    private String exprStr;
+    private String token;   // містить поточку лексему
+    private int tokType;    // містить тип поточної лексеми
+    private int kwToken;
+
+    /**
+     * В цьому класі звязуються ключові слова із їх лексемами
+     */
+    class Keyword {
+
+        String keyword; // стрічка
+        int keywordTok; // внутрішнє представлення
+
+        Keyword(String str, int t) {
+            keyword = str;
+            keywordTok = t;
+        }
+    }
+    Keyword kwTable[];
+
+    // внутрішнє представлення ключових слів
+    final int UNKNCOM = 0;
+    final int SIN = 1;
+    final int COS = 2;
+    final int TAN = 3;
+    final int COT = 4;
+    final int ASIN = 5;
+    final int ACOS = 6;
+    final int ATAN = 7;
+    final int ACOT = 8;
+    final int EXP = 9;
+    final int LOG10 = 10;
+    final int LOG1P = 11;
+    final int SQRT = 12;
+    final int ABS = 13;
+
+    // типи лексем
+    final int NONE = 0;
+    final int DELIMITER = 1;
+    final int NUMBER = 3;
+    final int COMMAND = 4;
+
+    // лексема кінця виразу
+    final String EOP = "\0";
 
     public ExpressionParser() {
-        error = new Error();
-        x = new Variable();
-        y = new Variable();
-        z = new Variable();
+        this.kwTable = new Keyword[]{
+            new Keyword("sin", SIN),
+            new Keyword("cos", COS),
+            new Keyword("tan", TAN),
+            new Keyword("cot", COT),
+            new Keyword("asin", ASIN),
+            new Keyword("acos", ACOS),
+            new Keyword("atan", ATAN),
+            new Keyword("acot", ACOT),
+            new Keyword("exp", EXP),
+            new Keyword("log10", LOG10),
+            new Keyword("log1p", LOG1P),
+            new Keyword("sqrt", SQRT),
+            new Keyword("abs", ABS),
+        };
     }
 
-    public Function parse(String expr) {
-        TokenString tokens = tokenize(expr);
-        if (tokens != null) {
-            checkParentheses(tokens);
-            substituteUnaryMinus(tokens);
-            Quantity root = doOrderOfOperations(tokens);
-            if (root == null) {
-                error.makeError("Parsing of the function \"" + expr + "\" failed.");
-                return null;
-            }
-            return new Function(root, x, y, z);
+    public double parse(String expr) {
+        exprStr = expr;
+        this.expr = exprStr.toCharArray();
+
+        return evaluate();
+    }
+
+    /**
+     * Починає обчислення виразу за допомогою рекурсивно-низхідного алгоритму.
+     * Послідовно перебирає лексеми у виразі та рекурсивно викликає окремі
+     * методи, що відповідають базовим математичним операціям.
+     *
+     * @return - результат обчислення
+     */
+    private double evaluate() {
+        double result;
+
+        getToken();
+        if (token.equals(EOP)) {
+            //handleErr(NOEXP);       // немає виразу
         }
 
-        error.makeError("Parsing of the function \"" + expr + "\" failed.");
-        return null;
+        // починаємо аналіз виразу
+        result = evalExp1();
+        putBack();
+        return result;
     }
 
-    private TokenString tokenize(String expr) {
-        TokenString tkString = new TokenString();
+    /**
+     * Обробляє оператор віднімання та додавання. Викликає метод evalExp2() для
+     * обчислення операції множення та ділення. Повертає результат операції.
+     *
+     * @return - результат операції віднімання/додавання
+     */
+    private double evalExp1() {
+        char op;
+        double result;
+        double partialResult;
 
-        String name = "";
-        String number = "";
-        int numDecimals = 0;
-        for (int i = 0; i < expr.length(); i++) {
-            char currentChar = expr.charAt(i);
-            boolean special = false;
+        result = evalExp2();
 
-            if (Character.isAlphabetic(currentChar)) {
-                if (currentChar == 'x') {
-                    tkString.addToken(new Token(TokenType.X));
-                } else if (currentChar == 'y') {
-                    tkString.addToken(new Token(TokenType.Y));
-                } else if (currentChar == 'z') {
-                    tkString.addToken(new Token(TokenType.Z));
-                } else {
-                    name += currentChar;
-                }
-                special = true;
-            } else if (name.length() > 0) {
-                TokenType type = getTokenTypeByName(name);
-                if (type == null) {
-                    error.makeError("The function name " + name + " is not valid!");
-                    return null;
-                }
-                tkString.addToken(new Token(type));
-                name = "";
+        while ((op = token.charAt(0)) == '+' || op == '-') {
+            getToken();
+            partialResult = evalExp2();
+            switch (op) {
+                case '-':
+                    result = result - partialResult;
+                    break;
+                case '+':
+                    result = result + partialResult;
+                    break;
             }
+        }
+        return result;
+    }
 
-            if (Character.isDigit(currentChar) || currentChar == '.') {
-                if (currentChar == '.') {
-                    if (numDecimals == 0) {
-                        number += currentChar;
+    /**
+     * Обробляє оператор множення та ділення. Викликає метод evalExp3() для
+     * обчислення операції піднесення до степеня. Повертає результат операції.
+     *
+     * @return - результат операції множення/ділення
+     */
+    private double evalExp2() {
+        char op;
+        double result;
+        double partialResult;
+
+        result = evalExp3();
+
+        while ((op = token.charAt(0)) == '*' || op == '/' || op == '%') {
+            getToken();
+
+            partialResult = evalExp3();
+            switch (op) {
+                case '*':
+                    result = result * partialResult;
+                    break;
+                case '/':
+                    if (partialResult == 0.0) {
+                        //handleErr(DIVBYZERO);
                     }
-                    numDecimals++;
-                } else {
-                    number += currentChar;
-                }
-                special = true;
-            } else if (number.length() > 0) {
-                tkString.addToken(new Token(TokenType.NUMBER, number));
-                number = "";
-                numDecimals = 0;
-            }
-
-            if (!(special || currentChar == ' ')) {
-                if (currentChar == '(') {
-                    tkString.addToken(new Token(TokenType.OPEN_PARENTHESES));
-                } else if (currentChar == ')') {
-                    tkString.addToken(new Token(TokenType.CLOSE_PARENTHESES));
-                } else if (currentChar == ',') {
-                    tkString.addToken(new Token(TokenType.COMMA));
-                } else if (currentChar == '+') {
-                    tkString.addToken(new Token(TokenType.PLUS));
-                } else if (currentChar == '-') {
-                    tkString.addToken(new Token(TokenType.MINUS));
-                } else if (currentChar == '*') {
-                    tkString.addToken(new Token(TokenType.TIMES));
-                } else if (currentChar == '/') {
-                    tkString.addToken(new Token(TokenType.DIVIDED_BY));
-                } else if (currentChar == '^') {
-                    tkString.addToken(new Token(TokenType.RAISED_TO));
-                } else if (currentChar == '%') {
-                    tkString.addToken(new Token(TokenType.MODULO));
-                } else {
-                    error.makeError("The character '" + currentChar + "' is not allowed!");
-                    return null;
-                }
+                    result = result / partialResult;
+                    break;
+                case '%':
+                    if (partialResult == 0.0) {
+                        //handleErr(DIVBYZERO);
+                    }
+                    result = result % partialResult;
+                    break;
             }
         }
-        if (name.length() > 0) {
-            TokenType type = getTokenTypeByName(name);
-            if (type == null) {
-                error.makeError("The function name '" + name + "' is not valid!");
-                return null;
-            }
-            tkString.addToken(new Token(type));
-            name = "";
-        }
-        if (number.length() > 0) {
-            tkString.addToken(new Token(TokenType.NUMBER, number));
-            number = "";
-            numDecimals = 0;
-        }
-
-        return tkString;
+        return result;
     }
 
-    private Quantity doOrderOfOperations(TokenString tokens) {
-        /*
-		 * Order of operations in reverse:
-		 * Addition, Subtraction, Division, Multiplication, Modulo, Exponentiation, Function, Parentheses, Variables, Numbers
-		 * All from right to left 
-         */
-        int location = 0;	// Location of some operator
-        Quantity ret = new graph.expression.Number(0.0);
+    /**
+     * Обробляє оператор піднесення до степеня. Викликає метод evalExp4() для
+     * обчислення операції унарного плюса та мінуса. Повертає результат
+     * операції.
+     *
+     * @return - результат операції піднесення до степеня
+     */
+    private double evalExp3() {
+        double result;
+        double partialResult;
+        double ex;
+        int t;
 
-        location = scanFromRight(tokens, TokenType.PLUS);
-        if (location != -1) {
-            TokenString left = tokens.split(0, location);
-            TokenString right = tokens.split(location + 1, tokens.getLength());
-            ret = new Sum(doOrderOfOperations(left), doOrderOfOperations(right));
+        result = evalExp4();
+
+        if (token.equals("^")) {
+            getToken();
+            partialResult = evalExp3();
+            ex = result;
+            if (partialResult == 0.0) {
+                result = 1.0;
+            } else {
+                for (t = (int) partialResult - 1; t > 0; t--) {
+                    result = result * ex;
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Обробляє оператор унарного плюса та мінуса. Викликає метод evalExp5() для
+     * обчислення обробки дужок. Повертає результат операції.
+     *
+     * @return - результат операції унарного плюса/мінуса
+     */
+    private double evalExp4() {
+        double result;
+        String op;
+
+        op = "";
+        if ((tokType == DELIMITER)
+                && token.equals("+") || token.equals("-")) {
+            op = token;
+            getToken();
+        }
+        result = evalExp5();
+
+        if (op.equals("-")) {
+            result = -result;
+        }
+
+        return result;
+    }
+
+    /**
+     * Обробляє тригонометричні функції та дужки. Якщо такі присутні, продовжує
+     * рекурсію викливаючи метод evalExp1() початку обчислення виразу у дужках.
+     * Якщо функцій немає, завершує рекурсію. Повертає результат операції.
+     *
+     * @return - результат обчислення виразу у дужках
+     */
+    private double evalExp5() {
+        double result;
+
+        if (token.equals("(")) {
+            getToken();
+            result = evalExp1();
+            if (!token.equals(")")) {
+                //handleErr(UNBALPARENS);
+            }
+            getToken();
+        } else if (tokType == COMMAND) {
+            getToken();
+            getToken();
+            result = switch (kwToken) {
+                case SIN ->
+                    Math.sin(evalExp1());
+                case COS ->
+                    Math.cos(evalExp1());
+                case TAN ->
+                    Math.tan(evalExp1());
+                case COT ->
+                    1 / Math.tan(evalExp1());
+                case ASIN ->
+                    Math.asin(evalExp1());
+                case ACOS ->
+                    Math.acos(evalExp1());
+                case ATAN ->
+                    Math.atan(evalExp1());
+                case ACOT ->
+                    Math.atan(1 / evalExp1());
+                case LOG10 ->
+                    Math.log10(evalExp1());
+                case LOG1P ->
+                    Math.log1p(evalExp1());
+                case SQRT ->
+                    Math.sqrt(evalExp1());
+                case ABS ->
+                    Math.abs(evalExp1());
+                case EXP ->
+                    Math.exp(evalExp1());
+                default ->
+                    0;
+            };
+            if (!token.equals(")")) {
+                //handleErr(UNBALPARENS);
+            }
+            getToken();
         } else {
-            location = scanFromRight(tokens, TokenType.MINUS);
-            if (location != -1) {
-                TokenString left = tokens.split(0, location);
-                TokenString right = tokens.split(location + 1, tokens.getLength());
-                ret = new Difference(doOrderOfOperations(left), doOrderOfOperations(right));
+            result = atom();
+        }
+
+        return result;
+    }
+
+    /**
+     * Отримує наступний елемент з потоку.
+     */
+    private void getToken() {
+        tokType = NONE;
+        token = "";
+
+        if (exprIdx == expr.length) {       // чи не досягнуто кінець програми?
+            token = EOP;
+            return;
+        }
+
+        while (exprIdx < expr.length // пропускаємо пробіли
+                && isSpaceOrTab(expr[exprIdx])) {
+            exprIdx++;
+        }
+
+        if (isDelim(expr[exprIdx])) {                   // Оператор
+            token += expr[exprIdx];
+            exprIdx++;
+            tokType = DELIMITER;
+        } else if (Character.isLetter(expr[exprIdx])) { // ключове слово
+            while (!isDelim(expr[exprIdx])) {
+                token += expr[exprIdx];
+                exprIdx++;
+                if (exprIdx >= expr.length) {
+                    break;
+                }
+            }
+
+            kwToken = lookUp(token);
+            if (kwToken == UNKNCOM) {
+                //tokType = VARIABLE;
             } else {
-                location = scanFromRight(tokens, TokenType.DIVIDED_BY);
-                if (location != -1) {
-                    TokenString left = tokens.split(0, location);
-                    TokenString right = tokens.split(location + 1, tokens.getLength());
-                    ret = new Quotient(doOrderOfOperations(left), doOrderOfOperations(right));
-                } else {
-                    location = scanFromRight(tokens, TokenType.TIMES);
-                    if (location != -1) {
-                        TokenString left = tokens.split(0, location);
-                        TokenString right = tokens.split(location + 1, tokens.getLength());
-                        ret = new Product(doOrderOfOperations(left), doOrderOfOperations(right));
-                    } else {
-                        location = scanFromRight(tokens, TokenType.MODULO);
-                        if (location != -1) {
-                            TokenString left = tokens.split(0, location);
-                            TokenString right = tokens.split(location + 1, tokens.getLength());
-                            ret = new Modulo(doOrderOfOperations(left), doOrderOfOperations(right));
-                        } else {
-                            location = scanFromRight(tokens, TokenType.RAISED_TO);
-                            if (location != -1) {
-                                TokenString left = tokens.split(0, location);
-                                TokenString right = tokens.split(location + 1, tokens.getLength());
-                                ret = new Power(doOrderOfOperations(left), doOrderOfOperations(right));
-                            } else {
-                                location = scanFromRight(tokens, TokenType.FUNCTIONS);
-                                if (location != -1) {
-                                    int endParams = getFunctionParamsEnd(tokens, location + 2);
-                                    if (endParams != -1) {
-                                        TokenString paramString = tokens.split(location + 2, endParams);
-                                        ret = parseFunctionParams(paramString, tokens.tokenAt(location).type);
-                                    }
-                                } else if (tokens.getLength() >= 2 && tokens.tokenAt(tokens.getLength() - 1).type == TokenType.CLOSE_PARENTHESES
-                                        && tokens.tokenAt(0).type == TokenType.OPEN_PARENTHESES) {
-                                    TokenString inParentheses = tokens.split(1, tokens.getLength() - 1);
-                                    ret = doOrderOfOperations(inParentheses);
-                                } else {
-                                    location = scanFromRight(tokens, TokenType.X);
-                                    if (location != -1) {
-                                        ret = x;
-                                    } else {
-                                        location = scanFromRight(tokens, TokenType.Y);
-                                        if (location != -1) {
-                                            ret = y;
-                                        } else {
-                                            location = scanFromRight(tokens, TokenType.Z);
-                                            if (location != -1) {
-                                                ret = z;
-                                            } else {
-                                                location = scanFromRight(tokens, TokenType.NUMBER);
-                                                if (location != -1) {
-                                                    ret = new graph.expression.Number(Double.parseDouble(tokens.tokenAt(location).data));
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                tokType = COMMAND;
+            }
+        } else if (Character.isDigit(expr[exprIdx])) {  // число
+            while (!isDelim(expr[exprIdx])) {
+                token += expr[exprIdx];
+                exprIdx++;
+                if (exprIdx >= expr.length) {
+                    break;
                 }
             }
-        }
-
-        return ret;
-    }
-
-    private Quantity parseFunctionParams(TokenString paramString, TokenType type) {
-        List<TokenString> params = new ArrayList<>();
-        int start = 0;
-        for (int i = 0; i < paramString.getLength(); i++) {
-            Token t = paramString.tokenAt(i);
-            if (t.type == TokenType.COMMA) {
-                params.add(paramString.split(start, i));
-                start = i + 1;
-            }
-        }
-        params.add(paramString.split(start, paramString.getLength()));
-
-        if (params.isEmpty()) {
-            return null;
-        }
-
-        if (params.size() == 1) {
-            Quantity param1 = doOrderOfOperations(params.get(0));
-            switch (type) {
-                case ABSOLUTE_VALUE:
-                    return new AbsoluteValue(param1);
-                case CEILING:
-                    return new Ceiling(param1);
-                case FLOOR:
-                    return new Floor(param1);
-                case SINE:
-                    return new Sine(param1);
-                case COSINE:
-                    return new Cosine(param1);
-                case TANGENT:
-                    return new Tangent(param1);
-                case COTANGENT:
-                    return new Cotangent(param1);
-                case SECANT:
-                    return new Secant(param1);
-                case COSECANT:
-                    return new Cosecant(param1);
-                case SQUARE_ROOT:
-                    return new SquareRoot(param1);
-                case EXPONENT:
-                    return new Exponent(param1);
-                default:
-                    return null;
-            }
-        } else if (params.size() == 2) {
-            Quantity param1 = doOrderOfOperations(params.get(0));
-            Quantity param2 = doOrderOfOperations(params.get(1));
-            switch (type) {
-                case NTHROOT:
-                    return new NthRoot(param1, param2);
-                case LOG:
-                    return new Log(param1, param2);
-                default:
-                    return null;
-            }
-        }
-        return null;
-    }
-
-    private int getFunctionParamsEnd(TokenString tokens, int location) {
-        int openParentheses = 0;
-        for (int i = location; i < tokens.getLength(); i++) {
-            Token t = tokens.tokenAt(i);
-            if (t.type == TokenType.OPEN_PARENTHESES) {
-                openParentheses++;
-            } else if (t.type == TokenType.CLOSE_PARENTHESES) {
-                if (openParentheses == 0) {
-                    return i;
-                }
-                openParentheses--;
-            }
-        }
-        return -1;
-    }
-
-    private int scanFromRight(TokenString tokens, TokenType type) {
-        int openParentheses = 0;
-        for (int i = tokens.getLength() - 1; i >= 0; i--) {
-            Token t = tokens.tokenAt(i);
-            if (t.type == TokenType.CLOSE_PARENTHESES) {
-                openParentheses++;
-            } else if (t.type == TokenType.OPEN_PARENTHESES) {
-                openParentheses--;
-            } else if (t.type == type && openParentheses == 0) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private int scanFromRight(TokenString tokens, TokenType[] types) {
-        int openParentheses = 0;
-        for (int i = tokens.getLength() - 1; i >= 0; i--) {
-            Token t = tokens.tokenAt(i);
-            if (t.type == TokenType.CLOSE_PARENTHESES) {
-                openParentheses++;
-            } else if (t.type == TokenType.OPEN_PARENTHESES) {
-                openParentheses--;
-            } else {
-                if (openParentheses == 0) {
-                    for (int j = 0; j < types.length; j++) {
-                        if (t.type == types[j]) {
-                            return i;
-                        }
-                    }
-                }
-            }
-        }
-        return -1;
-    }
-
-    private void substituteUnaryMinus(TokenString tokens) {
-        Token prev = null;
-        for (int i = 0; i < tokens.getLength(); i++) {
-            Token t = tokens.tokenAt(i);
-            if (t.type == TokenType.MINUS) {
-                if (prev == null || !(prev.type == TokenType.NUMBER || prev.type == TokenType.X || prev.type == TokenType.CLOSE_PARENTHESES)) {
-                    // Ex: -x becomes (0-1)*x
-                    tokens.remove(i);
-                    tokens.insert(i, new Token(TokenType.TIMES));
-                    tokens.insert(i, new Token(TokenType.CLOSE_PARENTHESES));
-                    tokens.insert(i, new Token(TokenType.NUMBER, "1"));
-                    tokens.insert(i, new Token(TokenType.MINUS));
-                    tokens.insert(i, new Token(TokenType.NUMBER, "0"));
-                    tokens.insert(i, new Token(TokenType.OPEN_PARENTHESES));
-                    i += 6;
-                }
-            }
-            prev = t;
+            tokType = NUMBER;
+        } else {
+            // невідомий символ
+            token = EOP;
         }
     }
 
-    private void checkParentheses(TokenString tokens) {
-        // Test for correct number of parentheses
-        int openParentheses = 0;
-        for (int i = 0; i < tokens.getLength(); i++) {
-            Token t = tokens.tokenAt(i);
-            if (t.type == TokenType.OPEN_PARENTHESES) {
-                openParentheses++;
-            } else if (t.type == TokenType.CLOSE_PARENTHESES) {
-                openParentheses--;
-            }
-            if (openParentheses < 0) {
-                error.makeError("You closed too many parentheses!");
-            }
+    /**
+     * Повертає поточний елемент назад у вхідний потік.
+     */
+    private void putBack() {
+        if (EOP.equals(token)) {
+            return;
         }
-        if (openParentheses > 0) {
-            error.makeError("You did not close enough parentheses!");
+
+        for (int i = 0; i < token.length(); i++) {
+            exprIdx--;
         }
     }
 
-    private TokenType getTokenTypeByName(String name) {
-        TokenType[] values = TokenType.FUNCTIONS;
-        for (TokenType v : values) {
-            if (v.name.equals(name)) {
-                return v;
+    /**
+     * Метод використовує таблицю kwTable для перетворення лексем в їх
+     * внутрішній формат. Якщо відповідність не знайдено, то повертається
+     * значення UNKNCOM
+     *
+     * @param s - лексема
+     * @return - формат лексеми у відповідності з таблицею kwTable
+     */
+    private int lookUp(String s) {
+        int i;
+
+        // перетворити в нижній регістр
+        s = s.toLowerCase();
+
+        // чи є елемент в таблиці
+        for (i = 0; i < kwTable.length; i++) {
+            if (kwTable[i].keyword.equals(s)) {
+                return kwTable[i].keywordTok;
             }
         }
-        return null;
+        return UNKNCOM;     // невідоме слово
+    }
+
+    /**
+     * Повертає числове значення числа, яке представлене у стрічковому форматі.
+     *
+     * @return - дійсне число, що відповідає отриманому токену
+     */
+    private double atom() {
+        double result = 0.0;
+
+        switch (tokType) {
+            case NUMBER:
+                try {
+                result = Double.parseDouble(token);
+            } catch (NumberFormatException exc) {
+                //handleErr(SYNTAX);
+            }
+            getToken();
+            break;
+            default:
+                //handleErr(SYNTAX);
+                break;
+        }
+        return result;
+    }
+
+    /**
+     * Перевіряє чи отриманий символ є символом-розділювачем
+     *
+     * @param c - отриманий символ
+     * @return - true, якщо символ є розділювачем, інакше - false
+     */
+    private boolean isDelim(char c) {
+        return (" \r,;<>+-/*%^=()".indexOf(c) != -1);
+    }
+
+    /**
+     * Перевіряє чи отриманий символ є пробілом чи табуляцією
+     *
+     * @param c - отриманий символ
+     * @return - true, якщо символ є пробілом чи табуляцією, інакше - false
+     */
+    boolean isSpaceOrTab(char c) {
+        return c == ' ' || c == '\t';
     }
 }

@@ -15,17 +15,14 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
-import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import javax.swing.JPanel;
 
 import graph.expression.Function;
 import graph.parser.ExpressionParser;
-import java.awt.event.MouseListener;
 import java.awt.geom.Ellipse2D;
 
 public class Window extends JPanel implements MouseWheelListener, KeyListener, Runnable {
@@ -58,9 +55,11 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
     private int[] bya;
     private int[] rxa;
     private int[] rya;
-    
+
+    // Чи наведено курсором на точку перетину графіків
     private boolean isHover = false;
-    
+
+    // Координати курсора
     private double movedX;
     private double movedY;
 
@@ -83,6 +82,7 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
                 repaint();
             }
         });
+
         this.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
@@ -97,7 +97,6 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
 
             @Override
             public void mouseMoved(MouseEvent event) {
-                System.out.println("Mouse movement detected! Actual mouse position is: " + event.getX() + "," + event.getY() + ".");
                 isHover = false;
                 g2d.setColor(Color.BLACK);
                 g2d.setFont(new Font("courier new", Font.ITALIC, 25));
@@ -106,8 +105,8 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
                         if (rxa[i] == bxa[i] && rya[i] == bya[i]
                                 && event.getX() >= rxa[i] - 5 && event.getX() <= rxa[i] + 5
                                 && event.getY() >= rya[i] - 5 && event.getY() <= rya[i] + 5) {
-                            movedX = (double)event.getX();
-                            movedY = (double)event.getY();
+                            movedX = (double) event.getX();
+                            movedY = (double) event.getY();
                             isHover = true;
                         }
                     }
@@ -117,20 +116,17 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
         });
 
         setFocusable(true);
-        requestFocusInWindow();
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
-        setMinimumSize(new Dimension(WIDTH, HEIGHT));
-        setMaximumSize(new Dimension(WIDTH, HEIGHT));
 
         buff = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
         g2d = buff.createGraphics();
 
         parser = new ExpressionParser();
-        textBox = "0";
-        function = parser.parse(textBox);
+        textBox = "";
+        function = new Function(textBox);
 
-        textBox1 = "0";
-        function1 = parser.parse(textBox1);
+        textBox1 = "";
+        function = new Function(textBox1);
 
         windowX = 0.0;
         windowY = 0.0;
@@ -138,13 +134,66 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
         windowWidth = windowHeight * WIDTH / HEIGHT;
     }
 
-    // Time variables
-    private double yVar = 0.0;	// Constantly increasing
-    private double zVar = 0.0;	// Cycles smoothly from -1 to 1
+    private void calculateFirstGraphCoordinates() {
+        bxs = new ArrayList<>();
+        bys = new ArrayList<>();
 
-    private synchronized void updateDT(double dt) {
-        yVar += dt;
-        zVar = Math.sin(yVar);
+        for (int x = 0; x < WIDTH; x++) {
+            double xx = toRealX(x);
+
+            double yy = 0.0;
+            if (function != null) {
+                yy = function.evaluateAt(xx);
+            }
+
+            double scaledX = x;
+            double scaledY = toScreenY(yy);
+            scaledY = Math.min(Math.max(scaledY, -5), HEIGHT + 5);
+
+            bxs.add(scaledX);
+            bys.add(scaledY);
+        }
+
+        bxa = new int[bxs.size()];
+        bya = new int[bys.size()];
+
+        for (int i = 0; i < bxa.length; i++) {
+            bxa[i] = bxs.get(i).intValue();
+        }
+        for (int i = 0; i < bya.length; i++) {
+            bya[i] = bys.get(i).intValue();
+        }
+    }
+
+    private void calculateSecondGraphCoordinates() {
+        rxs = new ArrayList<>();
+        rys = new ArrayList<>();
+
+        for (int x = 0; x < WIDTH; x++) {
+            double xx = toRealX(x);
+
+            double yy = 0.0;
+            if (function1 != null) {
+                yy = function1.evaluateAt(xx);
+            }
+
+            double scaledX = x;
+            double scaledY = toScreenY(yy);
+            scaledY = Math.min(Math.max(scaledY, -5), HEIGHT + 5);
+
+            rxs.add(scaledX);
+            rys.add(scaledY);
+        }
+
+        rxa = new int[rxs.size()];
+        rya = new int[rys.size()];
+
+        for (int i = 0; i < rxa.length; i++) {
+            rxa[i] = rxs.get(i).intValue();
+        }
+        for (int i = 0; i < rya.length; i++) {
+            rya[i] = rys.get(i).intValue();
+        }
     }
 
     @Override
@@ -155,67 +204,9 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
         g2d.fillRect(0, 0, WIDTH, HEIGHT);
 
         synchronized (this) {
-            ////////////////////////////////////////
-            bxs = new ArrayList<>();
-            bys = new ArrayList<>();
+            calculateFirstGraphCoordinates();
+            calculateSecondGraphCoordinates();
 
-            for (int x = 0; x < WIDTH; x++) {
-                double xx = toRealX(x);
-
-                double yy = 0.0;
-                if (function != null) {
-                    yy = function.evaluateAt(xx, yVar, zVar);
-                }
-
-                double scaledX = x;
-                double scaledY = toScreenY(yy);
-                scaledY = Math.min(Math.max(scaledY, -5), HEIGHT + 5);
-
-                bxs.add(scaledX);
-                bys.add(scaledY);
-            }
-
-            bxa = new int[bxs.size()];
-            bya = new int[bys.size()];
-
-            for (int i = 0; i < bxa.length; i++) {
-                bxa[i] = bxs.get(i).intValue();
-            }
-            for (int i = 0; i < bya.length; i++) {
-                bya[i] = bys.get(i).intValue();
-            }
-
-            ////////////////////////////////////////
-            rxs = new ArrayList<>();
-            rys = new ArrayList<>();
-
-            for (int x = 0; x < WIDTH; x++) {
-                double xx = toRealX(x);
-
-                double yy = 0.0;
-                if (function1 != null) {
-                    yy = function1.evaluateAt(xx, yVar, zVar);
-                }
-
-                double scaledX = x;
-                double scaledY = toScreenY(yy);
-                scaledY = Math.min(Math.max(scaledY, -5), HEIGHT + 5);
-
-                rxs.add(scaledX);
-                rys.add(scaledY);
-            }
-
-            rxa = new int[rxs.size()];
-            rya = new int[rys.size()];
-
-            for (int i = 0; i < rxa.length; i++) {
-                rxa[i] = rxs.get(i).intValue();
-            }
-            for (int i = 0; i < rya.length; i++) {
-                rya[i] = rys.get(i).intValue();
-            }
-
-            ///////////////////////////////////////
             g2d.setColor(Color.BLACK);
 
             // Намалювати вісь X
@@ -232,12 +223,16 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
             // Намалювати графіки
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2d.setStroke(new BasicStroke(3.0f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_ROUND));
-            g2d.setColor(new Color(0, 0, 250));
-            g2d.drawPolyline(bxa, bya, bxa.length);
-            g2d.setColor(new Color(255, 0, 0));
-            g2d.drawPolyline(rxa, rya, rxa.length);
-
-            // Намалювати стрічки для вводу рівнянь
+            if (!textBox.equals("")) {
+                g2d.setColor(Color.BLUE);
+                g2d.drawPolyline(bxa, bya, bxa.length);
+            }
+            if (!textBox1.equals("")) {
+                g2d.setColor(Color.RED);
+                g2d.drawPolyline(rxa, rya, rxa.length);
+            }
+            
+            // Намалювати текстові поля для вводу функцій
             g2d.setFont(new Font("courier new", Font.ITALIC, 40));
             g2d.setColor(Color.LIGHT_GRAY);
             g2d.fillRect(0, HEIGHT - g2d.getFontMetrics().getHeight(), WIDTH, HEIGHT);
@@ -246,9 +241,11 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
             g2d.drawString("f(x) = " + textBox, 0.0f, HEIGHT - 10.0f);
             g2d.drawString("f(x) = " + textBox1, 0.0f, HEIGHT - 60.0f);
 
+            // Намалювати позначення для осей координат
             g2d.drawString("x", 0, xAxisY - 10);
             g2d.drawString("y", yAxisX + 10, g2d.getFontMetrics().getHeight() - 20);
 
+            // Намалювати рамку навколо активного текстового поля
             if (textBoxActive) {
                 g2d.setColor(Color.BLUE);
                 g2d.drawRect(0, HEIGHT - g2d.getFontMetrics().getHeight(), WIDTH - 2, 45);
@@ -257,7 +254,8 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
                 g2d.drawRect(0, HEIGHT - g2d.getFontMetrics().getHeight() - 50, WIDTH - 2, 45);
             }
 
-            ////////////////////////////////////////
+            // Відображення значення точки перетину двох графіків 
+            // при наведенні курсору миші на область пертину
             g2d.setColor(Color.BLACK);
             g2d.setFont(new Font("courier new", Font.ITALIC, 25));
             if (!textBox.equals(textBox1)) {
@@ -266,7 +264,7 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
                         Ellipse2D.Double circle = new Ellipse2D.Double(rxa[i] - 5, rya[i] - 5, 10, 10);
                         g2d.fill(circle);
                         if (isHover) {
-                            g2d.drawString(String.format("%.2f", toRealX(rxa[i])) + ";" + String.format("%.2f", toRealY(rya[i])), (int)movedX - 100, (int)movedY + 35);
+                            g2d.drawString(String.format("%.2f", toRealX(rxa[i])) + ";" + String.format("%.2f", toRealY(rya[i])), (int) movedX - 100, (int) movedY + 35);
                         }
                     }
                 }
@@ -280,6 +278,7 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
         g2d.setFont(new Font("courier new", Font.ITALIC, 25));
         g2d.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_ROUND));
 
+        // Намалювати поділки для осі Y
         int yAxisX = toScreenX(0.0);
         for (int i = 0; i <= HEIGHT; i++) {
             if (toRealY(i) % 1 >= -0.01 && toRealY(i) % 1 <= 0.01) {
@@ -296,6 +295,7 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
             }
         }
 
+        // Намалювати поділки для осі X
         int xAxisY = toScreenY(0.0);
         for (int i = 0; i <= WIDTH; i++) {
             if (toRealX(i) % 1 >= -0.01 && toRealX(i) % 1 <= 0.01) {
@@ -316,23 +316,12 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
     @Override
     public void run() {
         boolean running = true;
-
-        long oldTime = 0;
-        double dt = 0.0;
-
         while (running) {
-
-            long newTime = System.nanoTime();
-            dt = (newTime - oldTime) / 1000000000.0;
-            oldTime = newTime;
-
-            updateDT(dt);
             repaint();
-
             try {
                 Thread.sleep(1);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                e.printStackTrace(System.out);
             }
         }
     }
@@ -344,37 +333,29 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
     @Override
     public void keyPressed(KeyEvent e) {
 
-        if (textBoxActive) {
-            if (e.getKeyCode() == KeyEvent.VK_BACK_SPACE) {
+        if (e.getKeyCode() == KeyEvent.VK_BACK_SPACE) {
+            if (textBoxActive) {
                 if (textBox.length() > 0) {
                     textBox = textBox.substring(0, textBox.length() - 1);
                 }
-            } else if (Character.isLetterOrDigit(e.getKeyChar()) || e.getKeyChar() == '^' || e.getKeyChar() == '-'
-                    || e.getKeyChar() == '+' || e.getKeyChar() == '*' || e.getKeyChar() == '/' || e.getKeyChar() == '('
-                    || e.getKeyChar() == ')' || e.getKeyChar() == '%' || e.getKeyChar() == ',' || e.getKeyChar() == '.') {
-                textBox += e.getKeyChar();
-            }
-        } else if (textBox1Active) {
-            if (e.getKeyCode() == KeyEvent.VK_BACK_SPACE) {
+            } else {
                 if (textBox1.length() > 0) {
                     textBox1 = textBox1.substring(0, textBox1.length() - 1);
                 }
-            } else if (Character.isLetterOrDigit(e.getKeyChar()) || e.getKeyChar() == '^' || e.getKeyChar() == '-'
-                    || e.getKeyChar() == '+' || e.getKeyChar() == '*' || e.getKeyChar() == '/' || e.getKeyChar() == '('
-                    || e.getKeyChar() == ')' || e.getKeyChar() == '%' || e.getKeyChar() == ',' || e.getKeyChar() == '.') {
+            }
+        } else if (Character.isLetterOrDigit(e.getKeyChar()) || e.getKeyChar() == '^' || e.getKeyChar() == '-'
+                || e.getKeyChar() == '+' || e.getKeyChar() == '*' || e.getKeyChar() == '/' || e.getKeyChar() == '('
+                || e.getKeyChar() == ')' || e.getKeyChar() == '%' || e.getKeyChar() == ',' || e.getKeyChar() == '.') {
+            if (textBoxActive) {
+                textBox += e.getKeyChar();
+            } else {
                 textBox1 += e.getKeyChar();
             }
         }
 
         if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-            function = parser.parse(textBox);
-            function1 = parser.parse(textBox1);
-            if (function == null) {
-                textBox = "";
-            }
-            if (function1 == null) {
-                textBox1 = "";
-            }
+            function = new Function(textBox);
+            function1 = new Function(textBox1);
         }
     }
 

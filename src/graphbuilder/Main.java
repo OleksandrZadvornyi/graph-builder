@@ -3,8 +3,6 @@ package graphbuilder;
 import javax.swing.JFrame;
 
 import graph.Window;
-import graph.parser.ExpressionParser;
-import graph.parser.TokenString;
 
 public class Main {
 

@@ -1,22 +1,17 @@
 package graph.expression;
 
+import graph.parser.ExpressionParser;
+
 public class Function {
-	private Quantity root;
-	private Variable x;
-	private Variable y;
-	private Variable z;
-	
-	public Function(Quantity root, Variable x, Variable y, Variable z) {
-		this.root = root;
-		this.x = x;
-		this.y = y;
-		this.z = z;
-	}
-	
-	public double evaluateAt(double x, double y, double z) {
-		this.x.set(x);
-		this.y.set(y);
-		this.z.set(z);
-		return root.getValue();
-	}
+
+    private final String expr;
+
+    public Function(String expr) {
+        this.expr = expr;
+    }
+
+    public double evaluateAt(double x) {
+        ExpressionParser parser = new ExpressionParser();
+        return parser.parse(expr.replaceAll("x", String.valueOf(x)));
+    }
 }
