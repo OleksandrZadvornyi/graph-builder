@@ -1,5 +1,11 @@
 package graph.parser;
 
+/**
+ * Клас, який розбирає та обчислює математичні вирази за допомогою
+ * рекурсивно-низхідного алгоритму.
+ *
+ * @author Oleksandr
+ */
 public class ExpressionParser {
 
     private char[] expr;    // масив з виразом
@@ -7,10 +13,10 @@ public class ExpressionParser {
     private String exprStr;
     private String token;   // містить поточку лексему
     private int tokType;    // містить тип поточної лексеми
-    private int kwToken;
+    private int kwToken;    // містить тип токена
 
     /**
-     * В цьому класі звязуються ключові слова із їх лексемами
+     * В цьому класі звязуються ключові слова із їх лексемами.
      */
     class Keyword {
 
@@ -55,6 +61,10 @@ public class ExpressionParser {
     // лексема кінця виразу
     final String EOP = "\0";
 
+    /**
+     * Конструктор класу. Ініціалізує таблицю ключових слів, які можуть
+     * використовуватись в програмі.
+     */
     public ExpressionParser() {
         this.kwTable = new Keyword[]{
             new Keyword("sin", SIN),
@@ -72,6 +82,16 @@ public class ExpressionParser {
             new Keyword("abs", ABS),};
     }
 
+    /**
+     * Починає розбір математичного виразу, представленого у вигляді текстової
+     * стрічки. Якщо на початку виразу знаходиться символ '-', то він
+     * заміняється на "(0-1)*" з метою коректного відображення обернених
+     * функцій.
+     *
+     * @param expr - математичний вираз
+     * @return - обраховане значення математичного виразу
+     * @throws Exception - помилка аналізу виразу
+     */
     public double parse(String expr) throws Exception {
         if (expr.equals("")) {
             return 0.0;
@@ -92,6 +112,7 @@ public class ExpressionParser {
      * методи, що відповідають базовим математичним операціям.
      *
      * @return - результат обчислення
+     * @throws Exception - помилка аналізу виразу
      */
     private double evaluate() throws Exception {
         double result;
@@ -108,6 +129,7 @@ public class ExpressionParser {
      * обчислення операції множення та ділення. Повертає результат операції.
      *
      * @return - результат операції віднімання/додавання
+     * @throws Exception - помилка аналізу виразу
      */
     private double evalExp1() throws Exception {
         char op;
@@ -134,6 +156,7 @@ public class ExpressionParser {
      * обчислення операції піднесення до степеня. Повертає результат операції.
      *
      * @return - результат операції множення/ділення
+     * @throws Exception - помилка аналізу виразу
      */
     private double evalExp2() throws Exception {
         char op;
@@ -147,22 +170,21 @@ public class ExpressionParser {
 
             partialResult = evalExp3();
             switch (op) {
-                case '*':
+                case '*' ->
                     result = result * partialResult;
-                    break;
-                case '/':
+                case '/' -> {
                     if (partialResult == 0.0) {
                         handleErr(DIVBYZERO);
 
                     }
                     result = result / partialResult;
-                    break;
-                case '%':
+                }
+                case '%' -> {
                     if (partialResult == 0.0) {
                         handleErr(DIVBYZERO);
                     }
                     result = result % partialResult;
-                    break;
+                }
             }
         }
         return result;
@@ -174,6 +196,7 @@ public class ExpressionParser {
      * операції.
      *
      * @return - результат операції піднесення до степеня
+     * @throws Exception - помилка аналізу виразу
      */
     private double evalExp3() throws Exception {
         double result;
@@ -203,6 +226,7 @@ public class ExpressionParser {
      * обчислення обробки дужок. Повертає результат операції.
      *
      * @return - результат операції унарного плюса/мінуса
+     * @throws Exception - помилка аналізу виразу
      */
     private double evalExp4() throws Exception {
         double result;
@@ -229,6 +253,7 @@ public class ExpressionParser {
      * Якщо функцій немає, завершує рекурсію. Повертає результат операції.
      *
      * @return - результат обчислення виразу у дужках
+     * @throws Exception - помилка аналізу виразу
      */
     private double evalExp5() throws Exception {
         double result;
@@ -374,22 +399,22 @@ public class ExpressionParser {
      * Повертає числове значення числа, яке представлене у стрічковому форматі.
      *
      * @return - дійсне число, що відповідає отриманому токену
+     * @throws Exception - помилка аналізу виразу
      */
     private double atom() throws Exception {
         double result = 0.0;
 
         switch (tokType) {
-            case NUMBER:
+            case NUMBER -> {
                 try {
-                result = Double.parseDouble(token);
-            } catch (NumberFormatException exc) {
-                handleErr(SYNTAX);
+                    result = Double.parseDouble(token);
+                } catch (NumberFormatException exc) {
+                    handleErr(SYNTAX);
+                }
+                getToken();
             }
-            getToken();
-            break;
-            default:
+            default ->
                 handleErr(SYNTAX);
-                break;
         }
         return result;
     }
@@ -419,8 +444,8 @@ public class ExpressionParser {
      * використовуючи клас виключних ситуацій Exception та масив з детальним
      * описом типу помилки.
      *
-     * @param error
-     * @throws Exception
+     * @param error - код помилки
+     * @throws Exception - об'єкт помилки
      */
     private void handleErr(int error) throws Exception {
         String[] err = {

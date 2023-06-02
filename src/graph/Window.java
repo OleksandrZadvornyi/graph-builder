@@ -25,6 +25,12 @@ import javax.swing.JPanel;
 import graph.expression.Function;
 import graph.parser.ExpressionParser;
 
+/**
+ * Клас, який відповідає за побудову координатної площини та безпосередньо самих
+ * графіків.
+ *
+ * @author Oleksandr
+ */
 public class Window extends JPanel implements MouseWheelListener, KeyListener, Runnable {
 
     public static final int WIDTH = 1024;
@@ -46,11 +52,13 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
     private boolean textBoxActive = true;
     private boolean textBox1Active = false;
 
+    // Списки для збереження обрахованих координат графіків
     private List<Double> bxs;
     private List<Double> bys;
     private List<Double> rxs;
     private List<Double> rys;
 
+    // Масиви для збереження координат графіків відносно екрану.
     private int[] bxa;
     private int[] bya;
     private int[] rxa;
@@ -63,6 +71,10 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
     private double movedX;
     private double movedY;
 
+    /**
+     * Коснструктор класу для ініціалізації основних полів та оголошення методів
+     * для відстеження подій.
+     */
     public Window() {
         addMouseWheelListener(this);
         addKeyListener(this);
@@ -134,6 +146,13 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
         windowWidth = windowHeight * WIDTH / HEIGHT;
     }
 
+    /**
+     * Обраховує всі точки графіка, вказаного в першому текстовому полі
+     * (синьому). Зберігає результат обрахунку в списках bxs, bys та масивах
+     * bxa, bya.
+     *
+     * @throws Exception - помилка аналізу виразу
+     */
     private void calculateFirstGraphCoordinates() throws Exception {
         bxs = new ArrayList<>();
         bys = new ArrayList<>();
@@ -165,6 +184,13 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
         }
     }
 
+    /**
+     * Обраховує всі точки графіка, вказаного в другому текстовому полі
+     * (червоному). Зберігає результат обрахунку в списках rxs, rys та масивах
+     * rxa, rya.
+     *
+     * @throws Exception - помилка аналізу виразу
+     */
     private void calculateSecondGraphCoordinates() throws Exception {
         rxs = new ArrayList<>();
         rys = new ArrayList<>();
@@ -196,6 +222,12 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
         }
     }
 
+    /**
+     * Перемальовує систему координат. Обчилює координати обох графіків та
+     * відображує їх на координатній площині.
+     *
+     * @param g - компонент графіки
+     */
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -293,6 +325,9 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
         g.drawImage(buff, 0, 0, null);
     }
 
+    /**
+     * Малює поділки на координатній площині для осей X та Y.
+     */
     private void drawDivisions() {
         g2d.setFont(new Font("courier new", Font.ITALIC, 25));
         g2d.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_ROUND));
@@ -332,6 +367,9 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
         }
     }
 
+    /**
+     * Оновлює графіче відображення координатної площини кожну мілісекунду.
+     */
     @Override
     public void run() {
         boolean running = true;
@@ -345,10 +383,23 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
         }
     }
 
+    /**
+     * Відстежує подію натиснення на кнопку на клавіатурі.
+     *
+     * @param e - об'єкт події натиснення на кнопку
+     */
     @Override
     public void keyTyped(KeyEvent e) {
     }
 
+    /**
+     * Відстежує подію натиснення на кнопку на клавіатурі. Залежно від
+     * натисненої кнопки змінює текстове поле, в яке користувач вводить
+     * математичний вираз для графіку. При натисненні клавіші "Enter" обраховує
+     * значення функцій.
+     *
+     * @param e - об'єкт події натиснення на кнопку
+     */
     @Override
     public void keyPressed(KeyEvent e) {
 
@@ -378,38 +429,89 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
         }
     }
 
+    /**
+     * Відстежує подію, коли кнопку на клавіатурі було відпущено.
+     *
+     * @param e - об'єкт події відпускання кнопки
+     */
     @Override
     public void keyReleased(KeyEvent e) {
     }
 
+    /**
+     * Обчислює координату нижньої межі графіку.
+     *
+     * @return - нижня межа координатної площини
+     */
     private double bottom() {
         return windowY - halfWindowHeight();
     }
 
+    /**
+     * Обчислює координату правої межі графіку.
+     *
+     * @return - права межа координатної площини
+     */
     private double right() {
         return windowX - halfWindowWidth();
     }
 
+    /**
+     * Перетворює значення координати відносно екрану в реальне значення
+     * графіку.
+     *
+     * @param screenX - координата відносно екрану
+     * @return - реальне значення відносно графіку
+     */
     private double toRealX(int screenX) {
         return screenX / (double) WIDTH * windowWidth + right();
     }
 
+    /**
+     * Перетворює значення координати відносно екрану в реальне значення
+     * графіку.
+     *
+     * @param screenY - координата відносно екрану
+     * @return - реальне значення відносно графіку
+     */
     private double toRealY(int screenY) {
         return (HEIGHT - screenY) / (double) HEIGHT * windowHeight + bottom();
     }
 
+    /**
+     * Перетворює отримане значення координати X відносно координат екрану.
+     *
+     * @param realX - реальне значення координати
+     * @return - обчислене відносне значення до ширини екрану
+     */
     private int toScreenX(double realX) {
         return (int) ((realX - right()) / windowWidth * WIDTH);
     }
 
+    /**
+     * Перетворює отримане значення координати Y відносно координат екрану.
+     *
+     * @param realY - реальне значення координати
+     * @return - обчислене відносне значення до висоти екрану
+     */
     private int toScreenY(double realY) {
         return HEIGHT - (int) ((realY - bottom()) / windowHeight * HEIGHT);
     }
 
+    /**
+     * Повертає половину від ширини вікна.
+     *
+     * @return - 1/2 від значення ширини вікна.
+     */
     private double halfWindowWidth() {
         return windowWidth / 2.0;
     }
 
+    /**
+     * Повертає половину від висоти вікна.
+     *
+     * @return - 1/2 від значення висоти вікна.
+     */
     private double halfWindowHeight() {
         return windowHeight / 2.0;
     }
