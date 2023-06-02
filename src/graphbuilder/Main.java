@@ -2,6 +2,7 @@ package graphbuilder;
 
 import javax.swing.JFrame;
 import graph.Window;
+import javax.swing.ImageIcon;
 
 /**
  * Головний клас, який задає властивості для вікна програми та ініціалізує
@@ -25,6 +26,9 @@ public class Main {
         frame.pack();
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLocationRelativeTo(null);
+        
+        ImageIcon img = new ImageIcon("E:\\Dev\\MyProjects\\NetBeansProjects\\GraphBuilder\\src\\line-chart.png");
+        frame.setIconImage(img.getImage());
         frame.setVisible(true);
 
         new Thread(window).start();

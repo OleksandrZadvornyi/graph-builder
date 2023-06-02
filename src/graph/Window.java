@@ -24,6 +24,7 @@ import javax.swing.JPanel;
 
 import graph.expression.Function;
 import graph.parser.ExpressionParser;
+import javax.swing.ImageIcon;
 
 /**
  * Клас, який відповідає за побудову координатної площини та безпосередньо самих
@@ -307,7 +308,8 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
                 if (!textBox.equals(textBox1)) {
                     for (int i = 0; i < rxa.length; i++) {
                         if (rxa[i] == bxa[i] && rya[i] == bya[i]) {
-                            Ellipse2D.Double circle = new Ellipse2D.Double(rxa[i] - 5, rya[i] - 5, 10, 10);
+                            Ellipse2D.Double circle
+                                    = new Ellipse2D.Double(rxa[i] - 5, rya[i] - 5, 10, 10);
                             g2d.fill(circle);
 
                             if (isHover) {
@@ -384,9 +386,9 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
     }
 
     /**
-     * Відстежує подію натиснення на кнопку на клавіатурі.
+     * Відстежує подію введення символа на клавіатурі.
      *
-     * @param e - об'єкт події натиснення на кнопку
+     * @param e - об'єкт події введення символа
      */
     @Override
     public void keyTyped(KeyEvent e) {
@@ -516,6 +518,12 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
         return windowHeight / 2.0;
     }
 
+    /**
+     * Обробляє подію прокручування колеса миші. Відповідно збільшує/зменшує
+     * масштаб області координатної площини.
+     *
+     * @param e - об'єкт подіїі прокручування колеса миші
+     */
     @Override
     public void mouseWheelMoved(MouseWheelEvent e) {
         double scale = Math.pow(1.15, e.getPreciseWheelRotation());
