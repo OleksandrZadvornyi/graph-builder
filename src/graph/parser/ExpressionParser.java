@@ -46,6 +46,12 @@ public class ExpressionParser {
     final int NUMBER = 3;
     final int COMMAND = 4;
 
+    // типи помилок
+    // типи помилок
+    final int SYNTAX = 0;
+    final int UNBALPARENS = 1;
+    final int DIVBYZERO = 2;
+
     // лексема кінця виразу
     final String EOP = "\0";
 
@@ -89,11 +95,7 @@ public class ExpressionParser {
      */
     private double evaluate() throws Exception {
         double result;
-
         getToken();
-        if (token.equals(EOP)) {
-            //handleErr(NOEXP);       // немає виразу
-        }
 
         // починаємо аналіз виразу
         result = evalExp1();
@@ -118,12 +120,10 @@ public class ExpressionParser {
             getToken();
             partialResult = evalExp2();
             switch (op) {
-                case '-':
+                case '-' ->
                     result = result - partialResult;
-                    break;
-                case '+':
+                case '+' ->
                     result = result + partialResult;
-                    break;
             }
         }
         return result;
@@ -152,13 +152,14 @@ public class ExpressionParser {
                     break;
                 case '/':
                     if (partialResult == 0.0) {
-                        //handleErr(DIVBYZERO);
+                        handleErr(DIVBYZERO);
+
                     }
                     result = result / partialResult;
                     break;
                 case '%':
                     if (partialResult == 0.0) {
-                        //handleErr(DIVBYZERO);
+                        handleErr(DIVBYZERO);
                     }
                     result = result % partialResult;
                     break;
@@ -236,7 +237,7 @@ public class ExpressionParser {
             getToken();
             result = evalExp1();
             if (!token.equals(")")) {
-                //handleErr(UNBALPARENS);
+                handleErr(UNBALPARENS);
             }
             getToken();
         } else if (tokType == COMMAND) {
@@ -273,7 +274,7 @@ public class ExpressionParser {
                     throw new Exception();
             };
             if (!token.equals(")")) {
-                //handleErr(UNBALPARENS);
+                handleErr(UNBALPARENS);
             }
             getToken();
         } else {
@@ -315,7 +316,6 @@ public class ExpressionParser {
 
             kwToken = lookUp(token);
             if (kwToken == UNKNCOM) {
-                //tokType = VARIABLE;
             } else {
                 tokType = COMMAND;
             }
@@ -375,7 +375,7 @@ public class ExpressionParser {
      *
      * @return - дійсне число, що відповідає отриманому токену
      */
-    private double atom() {
+    private double atom() throws Exception {
         double result = 0.0;
 
         switch (tokType) {
@@ -383,12 +383,12 @@ public class ExpressionParser {
                 try {
                 result = Double.parseDouble(token);
             } catch (NumberFormatException exc) {
-                //handleErr(SYNTAX);
+                handleErr(SYNTAX);
             }
             getToken();
             break;
             default:
-                //handleErr(SYNTAX);
+                handleErr(SYNTAX);
                 break;
         }
         return result;
@@ -412,5 +412,23 @@ public class ExpressionParser {
      */
     boolean isSpaceOrTab(char c) {
         return c == ' ' || c == '\t';
+    }
+
+    /**
+     * Забезпечує інформативне повідомлення про помилку в прорамі,
+     * використовуючи клас виключних ситуацій Exception та масив з детальним
+     * описом типу помилки.
+     *
+     * @param error
+     * @throws Exception
+     */
+    private void handleErr(int error) throws Exception {
+        String[] err = {
+            "Syntax Error",
+            "Unbalanced Parentheses",
+            "Division by Zero"
+        };
+
+        throw new Exception(err[error]);
     }
 }

@@ -24,8 +24,6 @@ import javax.swing.JPanel;
 
 import graph.expression.Function;
 import graph.parser.ExpressionParser;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class Window extends JPanel implements MouseWheelListener, KeyListener, Runnable {
 
@@ -209,12 +207,16 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
             try {
                 calculateFirstGraphCoordinates();
             } catch (Exception ex) {
-                ex.printStackTrace();
+                System.out.println(ex.getMessage());
+                textBox = "";
+                function = new Function(textBox);
             }
             try {
                 calculateSecondGraphCoordinates();
             } catch (Exception ex) {
-                ex.printStackTrace();
+                System.out.println(ex.getMessage());
+                textBox1 = "";
+                function1 = new Function(textBox);
             }
 
             // Намалювати графіки
@@ -266,8 +268,7 @@ public class Window extends JPanel implements MouseWheelListener, KeyListener, R
             }
 
             // Відображення значення точки перетину двох графіків 
-            // при наведенні курсору миші на область пертину
-            boolean isDrawed = false;
+            // при наведенні курсору миші на область перетину
             if (!textBox.equals("") && !textBox1.equals("")) {
                 g2d.setColor(Color.BLACK);
                 g2d.setFont(new Font("courier new", Font.ITALIC, 25));

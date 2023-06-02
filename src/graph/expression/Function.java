@@ -12,6 +12,6 @@ public class Function {
 
     public double evaluateAt(double x) throws Exception {
         ExpressionParser parser = new ExpressionParser();
-        return parser.parse(expr.replaceAll("x", String.valueOf(x)));
+        return parser.parse(expr.replaceAll("x", "("+String.valueOf(x) + ")"));
     }
 }
